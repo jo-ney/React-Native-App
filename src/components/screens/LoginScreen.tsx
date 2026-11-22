@@ -1,11 +1,10 @@
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { useState } from "react";
+import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   StyleSheet,
   Text,
   TextInput,
@@ -14,10 +13,15 @@ import {
 } from "react-native";
 import { auth } from "../../services/firebaseAuth";
 
+import AnimationExample from "../../animations/animation";
+
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
+
+  const [appLoading, setAppLoading] = useState(false);
 
   type RootStackParamList = {
     Login: undefined;
@@ -29,6 +33,15 @@ export default function LoginScreen() {
 
   const navigation = useNavigation<NavigationProp>();
 
+  const checkLoggedIn = () => {
+    onAuthStateChanged(auth, (user: any) => {
+      if (user) {
+        setAppLoading(false);
+        navigation.navigate("Dashboard");
+      }
+    });
+  };
+
   // Email validation
   const isValidEmail = (email: any) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -36,19 +49,24 @@ export default function LoginScreen() {
   };
 
   const handleLogin = async () => {
+    setErrorMessage("");
+
     // Validation
     if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields");
+      // Alert.alert("Error", "Please fill in all fields");
+      setErrorMessage("Please fill in all fields");
       return;
     }
 
     if (!isValidEmail(email)) {
-      Alert.alert("Error", "Please enter a valid email address");
+      // Alert.alert("Error", "Please enter a valid email address");
+      setErrorMessage("Please enter a valid email address");
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
+      // Alert.alert("Error", "Password must be at least 6 characters");
+      setErrorMessage("Password must be at least 6 characters");
       return;
     }
 
@@ -61,7 +79,7 @@ export default function LoginScreen() {
         password
       );
       console.log("Login successful:", userCredential.user.email);
-      Alert.alert("Success", "Logged in successfully!");
+      // Alert.alert("Success", "Logged in successfully!");
       navigation.navigate("Dashboard");
     } catch (error: any) {
       console.log("Login error code:", error.code);
@@ -87,7 +105,8 @@ export default function LoginScreen() {
         default:
           errorMessage = error.message;
       }
-      Alert.alert("Login Error", errorMessage);
+      setErrorMessage(errorMessage);
+      // Alert.alert("Login Error", errorMessage);
     } finally {
       setLoading(false);
     }
@@ -97,50 +116,71 @@ export default function LoginScreen() {
     navigation.navigate("Register");
   };
 
+  useEffect(() => {
+    setAppLoading(true);
+    checkLoggedIn();
+    setAppLoading(false);
+  }, []);
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Login Account</Text>
+      {appLoading ? (
+        <View style={{ width: "100%", alignItems: "center" }}>
+          <AnimationExample width={450} height={300} />
+        </View>
+      ) : (
+        <View>
+          <Text style={styles.title}>Login Account</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor="#999"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCorrect={false}
-        value={email}
-        onChangeText={setEmail}
-      />
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor="#999"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={email}
+            onChangeText={setEmail}
+          />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        placeholderTextColor="#999"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor="#999"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+            onSubmitEditing={handleLogin}
+          />
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={handleLogin}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Login</Text>
-        )}
-      </TouchableOpacity>
+          {errorMessage ? (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          ) : null}
 
-      <View style={styles.registerContainer}>
-        <Text style={styles.registerText}>
-          Don't have an account?{" "}
-          <Text style={styles.registerLink} onPress={navigateToRegister}>
-            Register
-          </Text>
-        </Text>
-      </View>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Login</Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.registerContainer}>
+            <Text style={styles.registerText}>
+              Don't have an account?{" "}
+              <Text style={styles.registerLink} onPress={navigateToRegister}>
+                Register
+              </Text>
+            </Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -192,5 +232,18 @@ const styles = StyleSheet.create({
   registerLink: {
     color: "#4A90E2",
     fontWeight: "600",
+  },
+
+  errorBox: {
+    backgroundColor: "#FFEBEE",
+    borderLeftWidth: 4, // A simple left border accent
+    borderLeftColor: "#F44336",
+    padding: 10,
+    marginVertical: 10,
+    borderRadius: 4,
+  },
+  errorText: {
+    color: "#B71C1C",
+    fontSize: 14,
   },
 });

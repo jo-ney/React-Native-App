@@ -3,6 +3,12 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
+
+
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { useEffect } from "react";
+import { auth } from "../../services/firebaseAuth";
+
 type RootStackParamList = {
   Login: undefined;
   Register: undefined;
@@ -14,6 +20,29 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export default function DashboardScreen() {
   const navigation = useNavigation<NavigationProp>();
 
+  const logOut = () => {
+    signOut(auth).then(() => {
+      navigation.navigate("Login");
+    });
+    onAuthStateChanged(auth, (user: any) => {
+      if (user) {
+        console.log("console------>(user:", user);
+      }
+    });
+  };
+
+  const checkLoggedIn = () => {
+    onAuthStateChanged(auth, (user: any) => {
+      if (!user) {
+        navigation.navigate("Login");
+      }
+    });
+  };
+
+  useEffect(() => {
+    checkLoggedIn();
+  }, []);
+
   return (
     <View style={styles.container}>
       {/* Top bar */}
@@ -22,10 +51,7 @@ export default function DashboardScreen() {
           <Text style={styles.welcomeLabel}>Welcome back</Text>
           <Text style={styles.welcomeTitle}>Dashboard</Text>
         </View>
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          onPress={() => navigation.navigate("Login")}
-        >
+        <TouchableOpacity style={styles.logoutBtn} onPress={logOut}>
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
